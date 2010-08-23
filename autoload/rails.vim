@@ -382,7 +382,25 @@ function! s:readable_model_name(...) dict abort
   return ""
 endfunction
 
-call s:add_methods('readable',['controller_name','model_name'])
+function! s:extension(...)
+  return rails#buffer().extension_name()
+endfunction
+
+function! s:readable_extension_name(...) dict abort
+  let f = self.name()
+  if f =~ '\<app/extensions/.*\.rb$'
+    return s:sub(f,'.*<app/extensions/(.*)\.rb$','\1')
+  elseif f =~ '\<app/extensions/.*/.*$'
+    return s:sub(f,'.*<app/extensions/([^\/]*)/.*$','\1')
+  elseif f =~ '\<app/extensions/.*/.*$'
+  elseif a:0 && a:1
+    return rails#singularize(self.controller_name())
+  endif
+  return ""
+endfunction
+
+"call s:add_methods('readable',['controller_name','model_name'])
+call s:add_methods('readable',['controller_name','model_name','extension_name'])
 
 function! s:readfile(path,...)
   let nr = bufnr('^'.a:path.'$')
@@ -824,7 +842,7 @@ function! s:app_background_script_command(cmd) dict abort
     let screen = g:rails_gnu_screen
   endif
   if has("gui_win32")
-    if &shellcmdflag == "-c" && ($PATH . &shell) =~? 'cygwin'
+    if &shellcmdflag == "-c" && ($PATH . &shell) =~? 'cygwin'group
       silent exe "!cygstart -d ".s:rquote(self.path())." ruby ".a:cmd
     else
       exe "!start ".cmd
@@ -1920,6 +1938,7 @@ function! s:RailsFind()
   let res = s:sub(s:sub(s:findfromview('render\s*(\=\s*:partial\s\+=>\s*','\1'),'^/',''),'\k+$','_&')
   if res != ""|return res."\n".s:findview(res)|endif
 
+
   let res = s:findamethod('render\s*:\%(template\|action\)\s\+=>\s*','\1.'.format.'\n\1')
   if res != ""|return res|endif
 
@@ -2570,6 +2589,8 @@ function! s:findview(name)
   let self = rails#buffer()
   let name = a:name
   let pre = 'app/views/'
+  let ext_pre = 'app/extensions/'
+  let extension = self.extension_name()
   if name !~# '/'
     let controller = self.controller_name(1)
     if controller != ''
@@ -2577,8 +2598,27 @@ function! s:findview(name)
     endif
   endif
   if name =~# '\.\w\+\.\w\+$' || name =~# '\.'.s:viewspattern().'$'
-    return pre.name
+    if extension != ''
+      if self.app().has_file(ext_pre.extension.'/views/'.name)
+        return ext_pre.extension.'/views/'.name
+      elseif
+        return pre.name
+      endif
+    else
+      return pre.name
+    endif
   else
+    if extension != ''
+      for format in ['.'.s:format('html'), '']
+        for type in split(s:view_types,',')
+          echo ext_pre.extension.'/views/'.name.format.'.'.type
+          if self.app().has_file(ext_pre.extension.'/views/'.name.format.'.'.type)
+            return ext_pre.extension.'/views/'.name.format.'.'.type
+          endif
+        endfor
+      endfor
+    endif
+
     for format in ['.'.s:format('html'), '']
       for type in split(s:view_types,',')
         if self.app().has_file(pre.name.format.'.'.type)
@@ -2587,7 +2627,15 @@ function! s:findview(name)
       endfor
     endfor
   endif
-  return ''
+
+  echo name
+
+  if name =~# '^\(.*\/\)\=[^_]\(.*\)$'
+    echo s:sub(name, '^(.*\/)=(.*)$', '\1_\2')
+    return s:findview(s:sub(name, '^(.*\/)=(.*)$', '\1_\2'))
+  else
+    return ''
+  endif
 endfunction
 
 function! s:findlayout(name)
@@ -3173,7 +3221,7 @@ function! s:Extract(bang,...) range abort
     endif
   endif
   " No tabs, they'll just complicate things
-  if ext =~? '^\%(rhtml\|erb\|dryml\)$'
+  if ext =~? '^\%(haml\|rhtml\|erb\|dryml\)$'
     let erub1 = '\<\%\s*'
     let erub2 = '\s*-=\%\>'
   else
@@ -3203,7 +3251,7 @@ function! s:Extract(bang,...) range abort
   elseif "@".name != var
     let renderstr .= ", :object => ".var
   endif
-  if ext =~? '^\%(rhtml\|erb\|dryml\)$'
+  if ext =~? '^\%(haml\|rhtml\|erb\|dryml\)$'
     let renderstr = "<%= ".renderstr." %>"
   elseif ext == "rxml" || ext == "builder"
     let renderstr = "xml << ".s:sub(renderstr,"render ","render(").")"
@@ -4523,7 +4571,7 @@ function! RailsBufInit(path)
     setlocal filetype=lesscss
   elseif &ft =~ '^\%(dryml\)\=$' && expand("%:e") == "dryml"
     setlocal filetype=dryml
-  elseif (&ft == "" || v:version < 701) && expand("%:e") =~ '^\%(rhtml\|erb\)$'
+  elseif (&ft == "" || v:version < 701) && expand("%:e") =~ '^\%(haml\|rhtml\|erb\)$'
     setlocal filetype=eruby
   elseif (&ft == "" || v:version < 700) && expand("%:e") == 'yml'
     setlocal filetype=yaml
@@ -4592,12 +4640,19 @@ function! s:SetBasePath()
   if self.controller_name() != ''
     let path += ['app/views/'.self.controller_name(), 'public']
   endif
+
+
+  if self.extension_name() != ''
+    let path += ['app/extensions/'.self.extension_name().'/views']
+  endif
+
   if self.app().has('test')
     let path += ['test', 'test/unit', 'test/functional', 'test/integration']
   endif
   if self.app().has('spec')
     let path += ['spec', 'spec/models', 'spec/controllers', 'spec/helpers', 'spec/views', 'spec/lib', 'spec/requests', 'spec/integration']
   endif
+
   let path += ['app/*', 'vendor', 'vendor/plugins/*/lib', 'vendor/plugins/*/test', 'vendor/rails/*/lib', 'vendor/rails/*/test']
   call map(path,'self.app().path(v:val)')
   call self.setvar('&path',(add_dot ? '.,' : '').s:pathjoin([self.app().path()],path,old_path))
@@ -4621,7 +4676,7 @@ function! s:BufSettings()
     let b:browsefilter = ""
           \."All Rails Files\t".code.';'.templates.';'.fixtures.';'.statics."\n"
           \."Source Code (*.rb, *.rake)\t".code."\n"
-          \."Templates (*.rhtml, *.rxml, *.rjs)\t".templates."\n"
+          \."Templates (*.rhtml, *.rxml, *.rjs, *.haml, *.html.haml)\t".templates."\n"
           \."Fixtures (*.yml, *.csv)\t".fixtures."\n"
           \."Static Files (*.html, *.css, *.js)\t".statics."\n"
           \."All Files (*.*)\t*.*\n"
