@@ -2611,7 +2611,7 @@ function! s:findview(name)
     if extension != ''
       for format in ['.'.s:format('html'), '']
         for type in split(s:view_types,',')
-          echo ext_pre.extension.'/views/'.name.format.'.'.type
+          "echo ext_pre.extension.'/views/'.name.format.'.'.type
           if self.app().has_file(ext_pre.extension.'/views/'.name.format.'.'.type)
             return ext_pre.extension.'/views/'.name.format.'.'.type
           endif
@@ -2628,8 +2628,7 @@ function! s:findview(name)
     endfor
   endif
 
-  if name =~# '^\(.*\/\)\=[^_]\(.*\)$'
-    echo s:sub(name, '^(.*\/)=(.*)$', '\1_\2')
+  if name =~# '^\(.*\/\)\=[^_]\(.*\)$' && name =~# '.*[^_]$'
     return s:findview(s:sub(name, '^(.*\/)=(.*)$', '\1_\2'))
   else
     return ''
