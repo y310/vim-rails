@@ -2628,8 +2628,6 @@ function! s:findview(name)
     endfor
   endif
 
-  echo name
-
   if name =~# '^\(.*\/\)\=[^_]\(.*\)$'
     echo s:sub(name, '^(.*\/)=(.*)$', '\1_\2')
     return s:findview(s:sub(name, '^(.*\/)=(.*)$', '\1_\2'))
