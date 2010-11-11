@@ -2154,6 +2154,7 @@ function! s:BufFinderCommands()
   call s:addfilecmds("lib")
   call s:addfilecmds("environment")
   call s:addfilecmds("initializer")
+  call s:addfilecmds("extension")
 endfunction
 
 function! s:completion_filter(results,A)
@@ -2355,6 +2356,10 @@ endfunction
 
 function! s:initializerList(A,L,P)
   return s:completion_filter(rails#app().relglob("config/initializers/","**/*",".rb"),a:A)
+endfunction
+
+function! s:extensionList(A,L,P)
+  return s:completion_filter(rails#app().relglob("app/extensions/","**/*",".rb"),a:A)
 endfunction
 
 function! s:Navcommand(bang,...)
@@ -2842,6 +2847,10 @@ endfunction
 
 function! s:initializerEdit(cmd,...)
   return s:EditSimpleRb(a:cmd,"initializer",a:0? a:1 : "../routes","config/initializers/",".rb")
+endfunction
+
+function! s:extensionEdit(cmd,...)
+  call s:EditSimpleRb(a:cmd,"extension",a:0? a:1 : s:model(1),"app/extensions/",".rb")
 endfunction
 
 " }}}1
