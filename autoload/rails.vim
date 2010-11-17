@@ -296,8 +296,9 @@ function! s:lastformat(start)
 endfunction
 
 function! s:format(...)
-  let format = rails#buffer().last_format(a:0 > 1 ? a:2 : line("."))
-  return format ==# '' && a:0 ? a:1 : format
+  return "html"
+  "let format = rails#buffer().last_format(a:0 > 1 ? a:2 : line("."))
+  "return format ==# '' && a:0 ? a:1 : format
 endfunction
 
 call s:add_methods('readable',['end_of','last_opening_line','last_method_line','last_method','last_format','define_pattern'])
@@ -388,14 +389,18 @@ endfunction
 
 function! s:readable_extension_name(...) dict abort
   let f = self.name()
-  if f =~ '\<app/extensions/.*\.rb$'
+  if f =~ '\<submodules/shared/extensions/cookpad/.*\.rb$'
+    return s:sub(f,'.*<submodules/shared/extensions/cookpad/(.*)\.rb$','\1')
+  elseif f =~ '\<submodules/shared/extensions/cookpad/.*/.*$'
+    return s:sub(f,'.*<submodules/shared/extensions/cookpad/([^\/]*)/.*$','\1')
+  elseif f =~ '\<app/extensions/.*\.rb$'
     return s:sub(f,'.*<app/extensions/(.*)\.rb$','\1')
   elseif f =~ '\<app/extensions/.*/.*$'
     return s:sub(f,'.*<app/extensions/([^\/]*)/.*$','\1')
-  elseif f =~ '\<app/extensions/.*/.*$'
   elseif a:0 && a:1
     return rails#singularize(self.controller_name())
   endif
+
   return ""
 endfunction
 
@@ -2611,7 +2616,6 @@ function! s:findview(name)
     if extension != ''
       for format in ['.'.s:format('html'), '']
         for type in split(s:view_types,',')
-          "echo ext_pre.extension.'/views/'.name.format.'.'.type
           if self.app().has_file(ext_pre.extension.'/views/'.name.format.'.'.type)
             return ext_pre.extension.'/views/'.name.format.'.'.type
           endif
