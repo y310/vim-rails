@@ -111,7 +111,6 @@ function! s:Detect(filename)
     let ofn = fn
     "let fn = fnamemodify(ofn,':s?\(.*\)[\/]\(app\|config\|db\|doc\|features\|lib\|log\|public\|script\|spec\|stories\|test\|tmp\|vendor\)\($\|[\/].*$\)?\1?')
     let fn = fnamemodify(ofn,':s?\(.*\)[\/]\(app\|config\|db\|doc\|features\|lib\|log\|public\|script\|spec\|stories\|test\|tmp\|vendor\|cookpad\|extensions\|submodules\|shared\)\($\|[\/].*$\)?\1?')
-    echo fn
   endwhile
   return 0
   return 0
